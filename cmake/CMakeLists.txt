@@ -565,7 +565,7 @@ file(GLOB SCHEMA_AGNOSTIC_H_FILES ../src/ifcgeom_schema_agnostic/*.h)
 file(GLOB SCHEMA_AGNOSTIC_CPP_FILES ../src/ifcgeom_schema_agnostic/*.cpp)
 set(SCHEMA_AGNOSTIC_FILES ${SCHEMA_AGNOSTIC_H_FILES} ${SCHEMA_AGNOSTIC_CPP_FILES})
 
-add_library(IfcGeom ${SCHEMA_AGNOSTIC_FILES})
+add_library(IfcGeom STATIC ${SCHEMA_AGNOSTIC_FILES})
 set_target_properties(IfcGeom PROPERTIES COMPILE_FLAGS -DIFC_GEOM_EXPORTS)
 
 if (UNIX)
