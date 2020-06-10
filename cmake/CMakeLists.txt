@@ -34,6 +34,7 @@ endforeach()
 OPTION(COLLADA_SUPPORT "Build IfcConvert with COLLADA support (requires OpenCOLLADA)." ON)
 OPTION(IFCXML_SUPPORT "Build IfcParse with ifcXML support (requires libxml2)." ON)
 OPTION(ENABLE_BUILD_OPTIMIZATIONS "Enable certain compiler and linker optimizations on RelWithDebInfo and Release builds." OFF)
+OPTION(DISABLE_COMPILER_WARNING "Disable all warning during the compiler building the project" ON)
 OPTION(IFCCONVERT_DOUBLE_PRECISION "IfcConvert: Use double precision floating-point numbers." ON)
 OPTION(BUILD_IFCGEOM "Build IfcGeom." ON)
 OPTION(BUILD_IFCPYTHON "Build IfcPython." ON)
@@ -367,6 +368,15 @@ IF(NOT CMAKE_BUILD_TYPE)
 	SET(CMAKE_BUILD_TYPE "Release")
 ENDIF()
 
+if(DISABLE_COMPILER_WARNING)
+    if(MSVC)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4819")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4456")
+    endif()
+endif()
+
 if(ENABLE_BUILD_OPTIMIZATIONS)
 	if(MSVC)
         # NOTE: RelWithDebInfo and Release use O2 (= /Ox /Gl /Gy/ = Og /Oi /Ot /Oy /Ob2 /Gs /GF /Gy) by default,
@@ -544,11 +554,10 @@ set(IFCPARSE_FILES ${IFCPARSE_CPP_FILES} ${IFCPARSE_H_FILES})
 
 add_library(IfcParse ${IFCPARSE_FILES})
 set_target_properties(IfcParse PROPERTIES COMPILE_FLAGS -DIFC_PARSE_EXPORTS)
-
 TARGET_LINK_LIBRARIES(IfcParse ${Boost_LIBRARIES} ${BCRYPT_LIBRARIES} ${LIBXML2_LIBRARIES})
 
-if (BUILD_IFCGEOM)
 
+if (BUILD_IFCGEOM)
 # IfcGeom
 file(GLOB IFCGEOM_H_FILES ../src/ifcgeom/*.h)
 file(GLOB IFCGEOM_CPP_FILES ../src/ifcgeom/*.cpp)
