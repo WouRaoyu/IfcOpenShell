@@ -17,7 +17,7 @@
 #                                                                              #
 ################################################################################
 
-cmake_minimum_required(VERSION 3.1.3)
+cmake_minimum_required(VERSION 3.15.0)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # not necessary, but encouraged
 
@@ -138,7 +138,7 @@ ENDMACRO()
 
 # Find Boost: On win32 the (hardcoded) default is to use static libraries and
 # runtime, when doing running conda-build we pick what conda prepared for us.
-IF(WIN32 AND ("$ENV{CONDA_BUILD}" STREQUAL ""))
+IF(WIN32 AND ("$ENV{CONDA_PREFIX}" STREQUAL ""))
 	SET(Boost_USE_STATIC_LIBS ON)
 	SET(Boost_USE_STATIC_RUNTIME ON)
 	SET(Boost_USE_MULTITHREADED ON)
