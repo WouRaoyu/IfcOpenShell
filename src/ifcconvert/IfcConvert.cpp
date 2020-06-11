@@ -1,4 +1,4 @@
-﻿/********************************************************************************
+/********************************************************************************
  *                                                                              *
  * This file is part of IfcOpenShell.                                           *
  *                                                                              *
@@ -33,6 +33,7 @@
 #include "../serializers/WavefrontObjSerializer.h"
 #include "../serializers/XmlSerializer.h"
 #include "../serializers/SvgSerializer.h"
+#include "../serializers/OffSerializer.h"
 
 #include "../ifcgeom_schema_agnostic/IfcGeomFilter.h"
 #include "../ifcgeom_schema_agnostic/IfcGeomIterator.h"
@@ -72,8 +73,8 @@ static std::wostream& cout_ = std::wcout;
 static std::wostream& cerr_ = std::wcerr;
 #else
 typedef std::string path_t;
-static std::ostream& cout_ = std::cout;
-static std::ostream& cerr_ = std::cerr;
+static std::ostream& cout_ = cout_;
+static std::ostream& cerr_ = cerr_;
 #endif
 
 const std::string DEFAULT_EXTENSION = ".obj";
@@ -92,6 +93,7 @@ void print_usage(bool suggest_help = true)
         << "\n"
         << "Converts (the geometry in) an IFC file into one of the following formats:\n"
         << "  .obj   WaveFront OBJ  (a .mtl file is also created)\n"
+		<< "  .off   CGAL OFF       (a .offx file is also created)\n"
 #ifdef WITH_OPENCOLLADA
         << "  .dae   Collada        Digital Assets Exchange\n"
 #endif
@@ -433,7 +435,7 @@ int main(int argc, char** argv) {
         print_options(generic_options.add(geom_options).add(serializer_options));
         return EXIT_SUCCESS;
     } else if (!vmap.count("input-file")) {
-        std::cerr << "[Error] Input file not specified" << std::endl;
+        cerr_ << "[Error] Input file not specified" << std::endl;
         print_usage();
         return EXIT_FAILURE;
     }
@@ -445,7 +447,7 @@ int main(int argc, char** argv) {
 		} else if (log_format == "json") {
 			Logger::OutputFormat(Logger::FMT_JSON);
 		} else {
-			std::cerr << "[Error] --log-format should be either plain or json" << std::endl;
+			cerr_ << "[Error] --log-format should be either plain or json" << std::endl;
 			print_usage();
 			return EXIT_FAILURE;
 		}
@@ -456,7 +458,7 @@ int main(int argc, char** argv) {
         if (num_filters) {
             Logger::Notice(boost::lexical_cast<std::string>(num_filters) + " filters read from specifified file.");
         } else {
-            std::cerr << "[Error] No filters read from specifified file.\n";
+            cerr_ << "[Error] No filters read from specifified file.\n";
             return EXIT_FAILURE;
         }
     }
@@ -479,8 +481,8 @@ int main(int argc, char** argv) {
         try {
             IfcGeom::set_default_style_file(IfcUtil::path::to_utf8(default_material_filename));
         } catch (const std::exception& e) {
-            std::cerr << "[Error] Could not read default material file:" << std::endl;
-            std::cerr << e.what() << std::endl;
+            cerr_ << "[Error] Could not read default material file:" << std::endl;
+            cerr_ << e.what() << std::endl;
             return EXIT_FAILURE;
         }
     }
@@ -537,6 +539,7 @@ int main(int argc, char** argv) {
 	IfcParse::IfcFile* ifc_file = 0;
     
     const path_t OBJ = IfcUtil::path::from_utf8(".obj"),
+		OFF = IfcUtil::path::from_utf8(".off"),
 		MTL = IfcUtil::path::from_utf8(".mtl"),
 		DAE = IfcUtil::path::from_utf8(".dae"),
 		GLB = IfcUtil::path::from_utf8(".glb"),
@@ -665,9 +668,11 @@ int main(int argc, char** argv) {
 
 	boost::shared_ptr<GeometrySerializer> serializer; /**< @todo use std::unique_ptr when possible */
 	if (output_extension == OBJ) {
-        // Do not use temp file for MTL as it's such a small file.
-        const path_t mtl_filename = change_extension(output_filename, MTL);
+		// Do not use temp file for MTL as it's such a small file.
+		const path_t mtl_filename = change_extension(output_filename, MTL);
 		serializer = boost::make_shared<WaveFrontOBJSerializer>(IfcUtil::path::to_utf8(output_temp_filename), IfcUtil::path::to_utf8(mtl_filename), settings);
+	} else if (output_extension == OFF) {
+		serializer = boost::make_shared<OffSerializer>(IfcUtil::path::to_utf8(output_temp_filename), settings);
 #ifdef WITH_OPENCOLLADA
 	} else if (output_extension == DAE) {
 		serializer = boost::make_shared<ColladaSerializer>(IfcUtil::path::to_utf8(output_temp_filename), settings);
@@ -1352,13 +1357,13 @@ void fix_quantities(IfcParse::IfcFile& f, bool no_progress, bool quiet, bool std
 			if (quiet) {
 				const int progress = context_iterator.progress();
 				for (; old_progress < progress; ++old_progress) {
-					std::cout << ".";
+					cout_ << ".";
 					if (stderr_progress)
-						std::cerr << ".";
+						cerr_ << ".";
 				}
-				std::cout << std::flush;
+				cout_ << std::flush;
 				if (stderr_progress)
-					std::cerr << std::flush;
+					cerr_ << std::flush;
 			} else {
 				const int progress = context_iterator.progress() / 2;
 				if (old_progress != progress) Logger::ProgressBar(progress);
@@ -1369,13 +1374,13 @@ void fix_quantities(IfcParse::IfcFile& f, bool no_progress, bool quiet, bool std
 
 	if (!no_progress && quiet) {
 		for (; old_progress < 100; ++old_progress) {
-			std::cout << ".";
+			cout_ << ".";
 			if (stderr_progress)
-				std::cerr << ".";
+				cerr_ << ".";
 		}
-		std::cout << std::flush;
+		cout_ << std::flush;
 		if (stderr_progress)
-			std::cerr << std::flush;
+			cerr_ << std::flush;
 	} else {
 		Logger::Status("\rDone writing quantities for " + boost::lexical_cast<std::string>(num_created) +
 			" objects                                ");
