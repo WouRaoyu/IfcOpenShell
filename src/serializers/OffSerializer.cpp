@@ -21,8 +21,8 @@
 
 OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSettings& settings) 
 	: GeometrySerializer(settings)
-	, off_stream((out_filename + ".off").c_str())
-	, offx_stream((out_filename + ".offx").c_str())
+	, off_stream((out_filename).c_str())
+	, offx_stream((out_filename.substr(0, out_filename.length()-4) + "x").c_str())
 	, offLine_count(0)
 	, vcount_total(1)
 	, precision(settings.precision){

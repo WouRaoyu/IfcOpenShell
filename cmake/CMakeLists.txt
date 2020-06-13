@@ -44,6 +44,7 @@ OPTION(BUILD_CONVERT "Build IfcConvert executable." ON)
 OPTION(USE_VLD "Use Visual Leak Detector for debugging memory leaks, MSVC-only." OFF)
 OPTION(USE_MMAP "Adds a command line options to parse IFC files from memory mapped files using Boost.Iostreams" OFF)
 OPTION(BUILD_SHARED_LIBS "Build IfcParse and IfcGeom as shared libs (SO/DLL)." OFF)
+OPTION(CONDA_BUILD "Build this project using conda environment default is ON" ON)
 if (${HAS_MAX})
 OPTION(BUILD_IFCMAX "Build IfcMax, a 3ds Max plug-in, Windows-only." ON)
 endif()
@@ -139,7 +140,7 @@ ENDMACRO()
 
 # Find Boost: On win32 the (hardcoded) default is to use static libraries and
 # runtime, when doing running conda-build we pick what conda prepared for us.
-IF(WIN32 AND ("$ENV{CONDA_PREFIX}" STREQUAL ""))
+IF(WIN32 AND NOT CONDA_BUILD)
 	SET(Boost_USE_STATIC_LIBS ON)
 	SET(Boost_USE_STATIC_RUNTIME ON)
 	SET(Boost_USE_MULTITHREADED ON)
@@ -370,7 +371,7 @@ ENDIF()
 
 if(DISABLE_COMPILER_WARNING)
     if(MSVC)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /w")
         # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4819")
         # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267")
@@ -428,7 +429,7 @@ IF(MSVC)
     endif()
 	# Link against the static VC runtime
     # TODO Make this configurable
-	IF("$ENV{CONDA_BUILD}" STREQUAL "")
+	IF(NOT CONDA_BUILD)
 	FOREACH(flag CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL
 			CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
 			CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
