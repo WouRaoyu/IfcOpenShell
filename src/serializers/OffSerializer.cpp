@@ -19,14 +19,41 @@
 
 #include "OffSerializer.h"
 
-OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSettings& settings) 
+OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSettings& settings)
 	: GeometrySerializer(settings)
 	, off_stream((out_filename).c_str())
 	, offx_stream((out_filename.substr(0, out_filename.length()-4) + "x").c_str())
 	, offLine_count(0)
 	, vcount_total(1)
 	, precision(settings.precision){
+	initSemanticSetting();
+}
 
+void OffSerializer::initSemanticSetting()
+{
+	setting["IfcWindow"] = "Window";
+	setting["IfcDoor"] = "Door";
+	setting["IfcSite"] = "Site";
+	setting["IfcRoof"] = "Roof";
+	setting["IfcWall"] = "Wall";
+	setting["IfcWallStandardCase"] = "Wall";
+	setting["IfcCurtainWall"] = "Wall";
+
+	setting["IfcSpace"] = "Closure";
+
+	setting["IfcBuildingElementProxy"] = "Install";
+	setting["IfcRailing"] = "Install";
+	setting["IfcRamp"] = "Install";
+	setting["IfcRampFlight"] = "Install";
+	setting["IfcStair"] = "Install";
+	setting["IfcStairFlight"] = "Install";
+}
+
+std::string OffSerializer::semanticName(std::string type)
+{
+	std::string semantic = setting[type];
+	if (semantic.empty()) return std::string("Anything");
+	return semantic;
 }
 
 bool OffSerializer::ready() {
@@ -53,7 +80,7 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 	std::map<int, int> vRefMap;
 
 	const int vcount = (int)mesh.verts().size() / 3;
-	for (std::vector<real_t>::const_iterator it = mesh.verts().begin(); it != mesh.verts().end(); ) {
+	for (std::vector<real_t>::const_iterator it = mesh.verts().begin(); it != mesh.verts().end();) {
 		const real_t x = *(it++) + (real_t)settings().offset[0];
 		const real_t y = *(it++) + (real_t)settings().offset[1];
 		const real_t z = *(it++) + (real_t)settings().offset[2];
@@ -88,5 +115,8 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 
 	unsigned int next_offLine_count = offLine_count + 2 + vUniqueSet.size() + f_count;
 
+	std::string semantics = semanticName(o->type()) + " " + std::to_string(o->id()) + " " + o->type();
+
+	offx_stream << semantics << " " << offLine_count << " " << next_offLine_count << std::endl;
 	offLine_count = next_offLine_count;
 }

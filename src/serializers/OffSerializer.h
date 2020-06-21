@@ -28,15 +28,22 @@
 #include <BRepBuilderAPI_Transform.hxx>
 
 #include "GeometrySerializer.h"
-#include "ifcgeom_schema_agnostic/IfcGeomRenderStyles.h"
+#include "../ifcgeom_schema_agnostic/IfcGeomRenderStyles.h"
+
+typedef std::map<std::string, std::string> semanticSetting;
 
 class OffSerializer : public GeometrySerializer {
 private:
 	std::ofstream off_stream;
 	std::ofstream offx_stream;
+	semanticSetting setting;
 	unsigned int offLine_count;
 	unsigned int vcount_total;
 	short precision;
+
+protected:
+	void initSemanticSetting();
+	std::string semanticName(std::string type);
 
 public:
 	OffSerializer(const std::string& out_filename, const SerializerSettings& setting);

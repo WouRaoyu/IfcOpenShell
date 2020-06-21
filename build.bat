@@ -12,7 +12,7 @@ cmake -G "Visual Studio 15 2017" -A x64 ^
  -DOCC_LIBRARY_DIR="%CONDA_PREFIX%\Library\lib" ^
  -DCOLLADA_SUPPORT=Off ^
  -DBUILD_IFCPYTHON=off ^
- -DBUILD_EXAMPLES=Off ^
+ -DBUILD_EXAMPLES=On ^
  -DBUILD_GEOMSERVER=Off ^
  -DBUILD_CONVERT=On ^
  ../cmake
