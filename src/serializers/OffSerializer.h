@@ -34,9 +34,11 @@ typedef std::map<std::string, std::string> semanticSetting;
 
 class OffSerializer : public GeometrySerializer {
 private:
-	std::ofstream off_stream;
-	std::ofstream offx_stream;
-	semanticSetting setting;
+	std::ofstream off_stream; // geometry info
+	std::ofstream offx_stream; // semantic info
+	std::ofstream offc_stream; // connection info
+	semanticSetting setting_fixed;
+	IfcParse::IfcFile* ifc_file;
 	unsigned int offLine_count;
 	unsigned int vcount_total;
 	short precision;
@@ -49,14 +51,14 @@ public:
 	OffSerializer(const std::string& out_filename, const SerializerSettings& setting);
 
 	bool ready();
-	void writeHeader();
+	void writeHeader() {};
 	void writeMaterial(const IfcGeom::Material& style);
 	void write(const IfcGeom::TriangulationElement<real_t>* o);
 	void write(const IfcGeom::BRepElement<real_t>* /*o*/) {}
-	void finalize() {}
+	void finalize();
 	bool isTesselated() const { return true; }
 	void setUnitNameAndMagnitude(const std::string& /*name*/, float /*magnitude*/) {}
-	void setFile(IfcParse::IfcFile*) {}
+	void setFile(IfcParse::IfcFile* file) { ifc_file = file; }
 };
 
 #endif

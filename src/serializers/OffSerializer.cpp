@@ -23,6 +23,7 @@ OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSe
 	: GeometrySerializer(settings)
 	, off_stream((out_filename).c_str())
 	, offx_stream((out_filename.substr(0, out_filename.length()-4) + "x").c_str())
+	, offc_stream((out_filename.substr(0, out_filename.length()-4) + "c").c_str())
 	, offLine_count(0)
 	, vcount_total(1)
 	, precision(settings.precision){
@@ -31,38 +32,40 @@ OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSe
 
 void OffSerializer::initSemanticSetting()
 {
-	setting["IfcWindow"] = "Window";
-	setting["IfcDoor"] = "Door";
-	setting["IfcSite"] = "Site";
-	setting["IfcRoof"] = "Roof";
-	setting["IfcWall"] = "Wall";
-	setting["IfcWallStandardCase"] = "Wall";
-	setting["IfcCurtainWall"] = "Wall";
+	setting_fixed["IfcWindow"] = "Window";
+	setting_fixed["IfcDoor"] = "Door";
+	setting_fixed["IfcSite"] = "Site";
+	setting_fixed["IfcRoof"] = "Roof";
+	setting_fixed["IfcWall"] = "Wall";
+	setting_fixed["IfcWallStandardCase"] = "Wall";
+	setting_fixed["IfcCurtainWall"] = "Wall";
+	setting_fixed["IfcFooting"] = "Ground";
 
-	setting["IfcSpace"] = "Closure";
+	setting_fixed["IfcSpace"] = "Closure";
 
-	setting["IfcBuildingElementProxy"] = "Install";
-	setting["IfcRailing"] = "Install";
-	setting["IfcRamp"] = "Install";
-	setting["IfcRampFlight"] = "Install";
-	setting["IfcStair"] = "Install";
-	setting["IfcStairFlight"] = "Install";
+	setting_fixed["IfcBuildingElementProxy"] = "Install";
+	setting_fixed["IfcRailing"] = "Install";
+	setting_fixed["IfcRamp"] = "Install";
+	setting_fixed["IfcRampFlight"] = "Install";
+	setting_fixed["IfcStair"] = "Install";
+	setting_fixed["IfcStairFlight"] = "Install";
+	setting_fixed["IfcColumn"] = "Install";
+
+	// IfcSlab -> unsure maybe floor roof site groud...
+	// IfcPlate -> unsure maybe floor roof site groud...
 }
+
+
 
 std::string OffSerializer::semanticName(std::string type)
 {
-	std::string semantic = setting[type];
-	if (semantic.empty()) return std::string("Anything");
-	return semantic;
+	return setting_fixed[type];
 }
 
 bool OffSerializer::ready() {
-	return off_stream.is_open() && offx_stream.is_open();
+	return off_stream.is_open() && offx_stream.is_open() && offc_stream.is_open();
 }
 
-void OffSerializer::writeHeader() {
-
-}
 
 void OffSerializer::writeMaterial(const IfcGeom::Material & style)
 {
@@ -115,8 +118,30 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 
 	unsigned int next_offLine_count = offLine_count + 2 + vUniqueSet.size() + f_count;
 
-	std::string semantics = semanticName(o->type()) + " " + std::to_string(o->id()) + " " + o->type();
+	std::string sem_type = semanticName(o->type());
+	if (sem_type.empty())
+	{
+		IfcUtil::IfcBaseClass* parent = ifc_file->instance_by_id(o->parent_id());
+		std::string type = parent->declaration().name();
+		sem_type = semanticName(type);
+		if (sem_type.empty()) sem_type = "Anything";
+	}
+
+	std::string semantics = sem_type + " " + std::to_string(o->id()) + " " + o->type();
 
 	offx_stream << semantics << " " << offLine_count << " " << next_offLine_count << std::endl;
 	offLine_count = next_offLine_count;
+}
+
+void OffSerializer::finalize()
+{
+	IfcEntityList::ptr connects = ifc_file->instances_by_type("IfcRelConnectsPathElements");
+	if (!connects) return;
+	for (IfcEntityList::it it = connects.get()->begin(); it != connects.get()->end(); it++)
+	{
+		IfcUtil::IfcBaseClass* entity = *it;
+		std::string connectA = entity->data().getArgument(5)->toString();
+		std::string connectB = entity->data().getArgument(6)->toString();
+		offc_stream << connectA.substr(1, connectA.length()) << " " << connectB.substr(1, connectB.length()) << std::endl;
+	}
 }

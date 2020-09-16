@@ -60,6 +60,7 @@ int main(int argc, char** argv) {
 	// we need to cast them to IfcWindows. Since these properties 
 	// are optional we need to make sure the properties are 
 	// defined for the window in question before accessing them.
+
 	IfcSchema::IfcBuildingElement::list::ptr elements = file.instances_by_type<IfcSchema::IfcBuildingElement>();
 
 	std::cout << "Found " << elements->size() << " elements in " << argv[1] << ":" << std::endl;
@@ -75,6 +76,25 @@ int main(int argc, char** argv) {
 				const double area = window->OverallWidth()*window->OverallHeight();
 				std::cout << "The area of this window is " << area << std::endl;
 			}
+		}
+
+	}
+
+	IfcSchema::IfcWall::list::ptr walls = file.instances_by_type<IfcSchema::IfcWall>();
+	for (IfcSchema::IfcWall::list::it it = walls->begin(); it != walls->end(); it++)
+	{
+		const IfcSchema::IfcWall* wall = *it;
+		IfcSchema::IfcRelConnectsElements::list::ptr relcon_list = wall->ConnectedTo();
+		if (!relcon_list) continue;
+		for (IfcSchema::IfcRelConnectsElements::list::it it_rel = relcon_list->begin(); it_rel != relcon_list->end(); it_rel++)
+		{
+			std::cout << wall->data().id() << std::endl;
+			const IfcSchema::IfcRelConnectsElements *rel = *it_rel;
+			unsigned int id_a = rel->RelatedElement()->data().id();
+			
+			std::cout << id_a << std::endl;
+
+			break;
 		}
 
 	}
