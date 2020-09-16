@@ -140,10 +140,10 @@ ENDMACRO()
 
 # Find Boost: On win32 the (hardcoded) default is to use static libraries and
 # runtime, when doing running conda-build we pick what conda prepared for us.
-IF(WIN32 AND NOT CONDA_BUILD)
+IF("$ENV{CONDA_PREFIX}" STREQUAL "")
 	SET(Boost_USE_STATIC_LIBS ON)
 	SET(Boost_USE_STATIC_RUNTIME ON)
-	SET(Boost_USE_MULTITHREADED ON)
+    SET(Boost_USE_MULTITHREADED ON)
 ELSE()
     # Disable Boost's autolinking as the libraries to be linked to are supplied
     # already by CMake, and it's going to conflict if there are multiple, as is
@@ -151,6 +151,7 @@ ELSE()
     ADD_DEFINITIONS(-DBOOST_ALL_NO_LIB)
     IF(WIN32)
         # Necessary for boost version >= 1.67
+        SET(Boost_USE_STATIC_LIBS OFF) # CONDA
         SET(BCRYPT_LIBRARIES "bcrypt.lib")
     ENDIF()
 ENDIF()
