@@ -32,8 +32,8 @@ OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSe
 
 void OffSerializer::initSemanticSetting()
 {
-	setting_fixed["IfcWindow"] = "Window";
-	setting_fixed["IfcDoor"] = "Door";
+	// setting_fixed["IfcWindow"] = "Window";
+	// setting_fixed["IfcDoor"] = "Door";
 	setting_fixed["IfcSite"] = "Site";
 	setting_fixed["IfcRoof"] = "Roof";
 	setting_fixed["IfcWall"] = "Wall";
@@ -43,13 +43,15 @@ void OffSerializer::initSemanticSetting()
 
 	setting_fixed["IfcSpace"] = "Closure";
 
-	setting_fixed["IfcBuildingElementProxy"] = "Install";
-	setting_fixed["IfcRailing"] = "Install";
-	setting_fixed["IfcRamp"] = "Install";
-	setting_fixed["IfcRampFlight"] = "Install";
-	setting_fixed["IfcStair"] = "Install";
-	setting_fixed["IfcStairFlight"] = "Install";
-	setting_fixed["IfcColumn"] = "Install";
+	// setting_fixed["IfcBuildingElementProxy"] = "Install";
+	// setting_fixed["IfcRailing"] = "Install";
+	// setting_fixed["IfcRamp"] = "Install";
+	// setting_fixed["IfcRampFlight"] = "Install";
+	// setting_fixed["IfcStair"] = "Install";
+	// setting_fixed["IfcStairFlight"] = "Install";
+	// setting_fixed["IfcColumn"] = "Install";
+
+	setting_fixed["IfcSlab"] = "Anything";
 
 	// IfcSlab -> unsure maybe floor roof site groud...
 	// IfcPlate -> unsure maybe floor roof site groud...
@@ -73,6 +75,16 @@ void OffSerializer::writeMaterial(const IfcGeom::Material & style)
 
 void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 {
+	std::string sem_type = semanticName(o->type());
+	if (sem_type.empty())
+	{
+		IfcUtil::IfcBaseClass* parent = ifc_file->instance_by_id(o->parent_id());
+		std::string type = parent->declaration().name();
+		sem_type = semanticName(type);
+		// if (sem_type.empty()) sem_type = "Anything";
+		if (sem_type.empty()) return;
+	}
+
 	const IfcGeom::Representation::Triangulation<real_t>& mesh = o->geometry();
 
 	unsigned int v_count = 0, f_count = 0;
@@ -113,22 +125,10 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 	}
 
 	off_stream << "OFF" << std::endl << vUniqueSet.size() << " " << f_count << " 0" << std::endl;
-
 	off_stream << vSStream.str() << fSStream.str();
-
 	unsigned int next_offLine_count = offLine_count + 2 + vUniqueSet.size() + f_count;
 
-	std::string sem_type = semanticName(o->type());
-	if (sem_type.empty())
-	{
-		IfcUtil::IfcBaseClass* parent = ifc_file->instance_by_id(o->parent_id());
-		std::string type = parent->declaration().name();
-		sem_type = semanticName(type);
-		if (sem_type.empty()) sem_type = "Anything";
-	}
-
 	std::string semantics = sem_type + " " + std::to_string(o->id()) + " " + o->type();
-
 	offx_stream << semantics << " " << offLine_count << " " << next_offLine_count << std::endl;
 	offLine_count = next_offLine_count;
 }
