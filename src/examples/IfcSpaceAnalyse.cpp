@@ -40,13 +40,12 @@
 
 #include "StlAPI.hxx"
 
-#ifdef USE_IFC4
-#include "../ifcparse/Ifc4.h"
-#define IfcSchema Ifc4
-#else
 #include "../ifcparse/Ifc2x3.h"
 #define IfcSchema Ifc2x3
-#endif
+
+// #include "../ifcparse/Ifc4.h"
+// #define IfcSchema Ifc4
+
 
 #include "../ifcparse/IfcBaseClass.h"
 #include "../ifcparse/IfcHierarchyHelper.h"
@@ -68,6 +67,7 @@ enum FACETYPE
 	FACE_ZMAX
 };
 
+TopoDS_Shape get_bbox_shape(Bnd_Box bbox);
 void init_bbox(std::vector<TopoDS_Shape>& shapes);
 void fast_generate_rooms(std::vector<TopoDS_Shape>& shapes);
 void recursiveConnection(IfcParse::IfcFile& file, int id, std::vector<int>& connects_id, std::vector<TopoDS_Shape>& shapes);
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 	}
 
 	// Redirect the output (both progress and log) to stdout
-	Logger::SetOutput(&std::cout, &std::cout);
+	// Logger::SetOutput(&std::cout, &std::cout);
 
 	// Parse the IFC file provided in argv[1]
 	IfcParse::IfcFile file(argv[1]);
@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
 	settings.set(IfcGeom::IteratorSettings::APPLY_DEFAULT_MATERIALS, true);
 	settings.set(IfcGeom::IteratorSettings::USE_WORLD_COORDS, true);
 	settings.set(IfcGeom::IteratorSettings::WELD_VERTICES, true);
+	settings.set(IfcGeom::IteratorSettings::DISABLE_OPENING_SUBTRACTIONS, true);
 
 	std::vector<int> connects_id;
 	std::vector<std::vector<int>> connects_register;
@@ -101,6 +102,9 @@ int main(int argc, char** argv) {
 
 	size_t begin_index, end_index = 0;
 	IfcSchema::IfcWall::list::ptr walls = file.instances_by_type<IfcSchema::IfcWall>();
+
+	/* generate relations between walls */
+
 	for (IfcSchema::IfcWall::list::it it = walls->begin(); it != walls->end(); it++)
 	{
 		const IfcSchema::IfcWall* wall = *it;
@@ -111,8 +115,6 @@ int main(int argc, char** argv) {
 		std::vector<TopoDS_Shape> shapes;
 
 		recursiveConnection(file, id_wall, connects_id, shapes);
-
-		wall->Representation()->Representations();
 		
 		begin_index = end_index;
 		end_index = connects_id.size();
@@ -122,16 +124,79 @@ int main(int argc, char** argv) {
 		std::vector<int> connects_group;
 		for (size_t i = begin_index; i < end_index; i++)
 		{
-			connects_group.emplace_back(connects_id[i]);
-			std::cout << connects_id[i] << " ";
+	 		connects_group.emplace_back(connects_id[i]);
+	 		std::cout << connects_id[i] << " ";
 		}
+
+		for (size_t i = 0; i < shapes.size(); i++)
+		{
+			TopoDS_Shape shape = shapes[i];
+			BRepMesh_IncrementalMesh meshMaker(shape, 0.01, Standard_False);
+			meshMaker.Perform();
+			std::string file_name = "group_" + std::to_string(connects_shapes.size()) + "wall_" + std::to_string(i) + ".stl";
+			StlAPI::Write(shape, file_name.c_str());
+		}
+
 		std::cout << std::endl << "------------------------------" << std::endl;
 		connects_register.emplace_back(connects_group);
 		connects_shapes.emplace_back(shapes);
 	}
 
-	std::vector<TopoDS_Shape> shapes = connects_shapes[0];
-	fast_generate_rooms(shapes);
+	/*for (IfcSchema::IfcWall::list::it it = walls->begin(); it != walls->end(); it++) {
+		const IfcSchema::IfcWall* wall = *it;
+
+		const IfcSchema::IfcCurtainWall* curtain = wall->as<IfcSchema::IfcCurtainWall>();
+
+		int id_wall = wall->data().id();
+
+		TopoDS_Shape shape = helper_fn_create_shape(settings, file.instance_by_id(id_wall));
+		
+		std::string file_name = "wall_" + std::to_string(id_wall) + ".stl";
+
+		if (shape.NbChildren() > 1)
+		{
+			std::cout << id_wall << " has subshapes " << shape.NbChildren() << std::endl;
+			Bnd_Box bbox;
+			BRepBndLib::Add(shape, bbox);
+			Standard_Real xmin, ymin, zmin, xmax, ymax, zmax;
+			bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+			shape = get_bbox_shape(bbox);
+			file_name = "wall_" + std::to_string(id_wall) + "_bbox.stl";
+		}
+		BRepMesh_IncrementalMesh meshMaker(shape, 0.01, Standard_False);
+		meshMaker.Perform();
+
+		StlAPI::Write(shape, file_name.c_str());
+	}
+	
+
+	IfcSchema::IfcSlab::list::ptr slabs = file.instances_by_type<IfcSchema::IfcSlab>();
+	for (IfcSchema::IfcSlab::list::it it = slabs->begin(); it != slabs->end(); it++) {
+		const IfcSchema::IfcSlab* slab = *it;
+		int id_slab = slab->data().id();
+
+		TopoDS_Shape shape = helper_fn_create_shape(settings, file.instance_by_id(id_slab));
+
+		std::string file_name = "slab_" + std::to_string(id_slab) + ".stl";
+
+		if (shape.NbChildren() > 1)
+		{
+			std::cout << id_slab << " has subshapes " << shape.NbChildren() << std::endl;
+			Bnd_Box bbox;
+			BRepBndLib::Add(shape, bbox);
+			Standard_Real xmin, ymin, zmin, xmax, ymax, zmax;
+			bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+			shape = get_bbox_shape(bbox);
+			file_name = "slab_" + std::to_string(id_slab) + "_bbox.stl";
+		}
+		BRepMesh_IncrementalMesh meshMaker(shape, 0.01, Standard_False);
+		meshMaker.Perform();
+
+		StlAPI::Write(shape, file_name.c_str());
+	}*/
+
+	//std::vector<TopoDS_Shape> shapes = connects_shapes[0];
+	//fast_generate_rooms(shapes);
 }
 
 void recursiveConnection(IfcParse::IfcFile& file, int id, std::vector<int>& connects_id, std::vector<TopoDS_Shape>& shapes) {
@@ -158,6 +223,13 @@ void recursiveConnection(IfcParse::IfcFile& file, int id, std::vector<int>& conn
 	if (!relcon_to.get()->size() && !relcon_from.get()->size()) return;
 
 	TopoDS_Shape shape = helper_fn_create_shape(settings, entity);
+	
+	if (shape.IsNull()) return;
+
+	if (shape.Closed())
+	{
+		std::cout << wall->data().id() << " is not closed" << std::endl;
+	}
 
 	shapes.emplace_back(shape);
 	connects_id.emplace_back(id);
@@ -192,14 +264,16 @@ TopoDS_Shape helper_fn_create_shape(IfcGeom::IteratorSettings& settings, IfcUtil
 	if (instance->declaration().is(IfcSchema::IfcProduct::Class())) {
 		if (representation) {
 			if (!representation->declaration().is(IfcSchema::IfcRepresentation::Class())) {
-				throw IfcParse::IfcException("Supplied representation not of type IfcRepresentation");
+				std::cout << "Supplied representation not of type IfcRepresentation" << std::endl;
+				return TopoDS_Shape();
 			}
 		}
 
 		typename IfcSchema::IfcProduct* product = (typename IfcSchema::IfcProduct*) instance;
 
 		if (!representation && !product->hasRepresentation()) {
-			throw IfcParse::IfcException("Representation is NULL");
+			std::cout << product->data().id() << " Representation is NULL" << std::endl;
+			return TopoDS_Shape();
 		}
 
 		typename IfcSchema::IfcProductRepresentation* prodrep = product->Representation();
@@ -264,13 +338,15 @@ TopoDS_Shape helper_fn_create_shape(IfcGeom::IteratorSettings& settings, IfcUtil
 				ifc_representation = *reps->begin();
 			}
 			else {
-				throw IfcParse::IfcException("No suitable IfcRepresentation found");
+				std::cout << "No suitable IfcRepresentation found" << std::endl;
+				return TopoDS_Shape();
 			}
 		}
 
 		IfcGeom::BRepElement<double>* brep = kernel.convert(settings, ifc_representation, product);
 		if (!brep) {
-			throw IfcParse::IfcException("Failed to process shape");
+			std::cout << "Failed to process shape" << std::endl;
+			return TopoDS_Shape();
 		}
 		else {
 			return brep->geometry().as_compound();
@@ -287,12 +363,14 @@ TopoDS_Shape helper_fn_create_shape(IfcGeom::IteratorSettings& settings, IfcUtil
 					return brep.as_compound();
 				}
 				catch (...) {
-					throw IfcParse::IfcException("Error during shape serialization");
+					std::cout << "Error during shape serialization" << std::endl;
+					return TopoDS_Shape();
 				}
 			}
 		}
 		else {
-			throw IfcParse::IfcException("Invalid additional representation specified");
+			std::cout << "Invalid additional representation specified" << std::endl;
+			return TopoDS_Shape();
 		}
 	}
 }

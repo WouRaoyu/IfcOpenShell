@@ -17,7 +17,10 @@
  *                                                                              *
  ********************************************************************************/
 
+#include <boost/algorithm/string/trim_all.hpp>
+
 #include "OffSerializer.h"
+
 
 OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSettings& settings)
 	: GeometrySerializer(settings)
@@ -36,13 +39,17 @@ void OffSerializer::initSemanticSetting()
 	// setting_fixed["IfcDoor"] = "Door";
 	setting_fixed["IfcSite"] = "Site";
 	setting_fixed["IfcRoof"] = "Roof";
+	
 	setting_fixed["IfcWall"] = "Wall";
 	setting_fixed["IfcWallStandardCase"] = "Wall";
 	setting_fixed["IfcCurtainWall"] = "Wall";
+	setting_fixed["IfcPlate"] = "Wall";
+	setting_fixed["IfcMember"] = "Wall";
+
 	setting_fixed["IfcFooting"] = "Ground";
 
-	setting_fixed["IfcSpace"] = "Closure";
 
+	//setting_fixed["IfcSpace"] = "Closure";
 	// setting_fixed["IfcBuildingElementProxy"] = "Install";
 	// setting_fixed["IfcRailing"] = "Install";
 	// setting_fixed["IfcRamp"] = "Install";
@@ -51,7 +58,7 @@ void OffSerializer::initSemanticSetting()
 	// setting_fixed["IfcStairFlight"] = "Install";
 	// setting_fixed["IfcColumn"] = "Install";
 
-	setting_fixed["IfcSlab"] = "Anything";
+	setting_fixed["IfcSlab"] = "Floor";
 
 	// IfcSlab -> unsure maybe floor roof site groud...
 	// IfcPlate -> unsure maybe floor roof site groud...
@@ -76,6 +83,7 @@ void OffSerializer::writeMaterial(const IfcGeom::Material & style)
 void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 {
 	std::string sem_type = semanticName(o->type());
+
 	if (sem_type.empty())
 	{
 		IfcUtil::IfcBaseClass* parent = ifc_file->instance_by_id(o->parent_id());
@@ -83,6 +91,13 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 		sem_type = semanticName(type);
 		// if (sem_type.empty()) sem_type = "Anything";
 		if (sem_type.empty()) return;
+	}
+
+	if (sem_type == "IfcSlab")
+	{
+		int count = o->product()->data().getArgumentCount();
+		std::string type = o->product()->data().getArgument(count - 1)->toString();
+		sem_type = type.substr(1, type.size() - 2);
 	}
 
 	const IfcGeom::Representation::Triangulation<real_t>& mesh = o->geometry();
@@ -128,7 +143,17 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 	off_stream << vSStream.str() << fSStream.str();
 	unsigned int next_offLine_count = offLine_count + 2 + vUniqueSet.size() + f_count;
 
-	std::string semantics = sem_type + " " + std::to_string(o->id()) + " " + o->type();
+	int storey_id;
+	for (std::map<int, std::set<int>>::iterator it = storey_fixed.begin(); it != storey_fixed.end(); it++)
+	{
+		std::pair<int, std::set<int>> storey_info = *it;
+		if (storey_info.second.find(o->id()) != storey_info.second.end())
+		{
+			storey_id = storey_info.first;
+		}
+	}
+
+	std::string semantics = sem_type + " " + std::to_string(o->id()) + " " + o->type() + " " + std::to_string(storey_id);
 	offx_stream << semantics << " " << offLine_count << " " << next_offLine_count << std::endl;
 	offLine_count = next_offLine_count;
 }
@@ -142,6 +167,49 @@ void OffSerializer::finalize()
 		IfcUtil::IfcBaseClass* entity = *it;
 		std::string connectA = entity->data().getArgument(5)->toString();
 		std::string connectB = entity->data().getArgument(6)->toString();
-		offc_stream << connectA.substr(1, connectA.length()) << " " << connectB.substr(1, connectB.length()) << std::endl;
+		offc_stream << connectA.substr(1) << " " << connectB.substr(1) << std::endl;
+	}
+}
+
+void OffSerializer::generateStorey()
+{
+	IfcEntityList::ptr storey_list = ifc_file->instances_by_type("IfcBuildingStorey");
+	
+	std::vector<std::pair<double, int>> storey_preinfo;
+	for (IfcEntityList::it it = storey_list.get()->begin(); it != storey_list.get()->end(); it++)
+	{
+		IfcUtil::IfcBaseClass* entity = *it;
+		double height = std::stod(entity->data().getArgument(9)->toString());
+		int id = entity->data().id();
+		std::pair<double, int> storey(height, id);
+		storey_preinfo.push_back(storey);
+	}
+
+	std::sort(storey_preinfo.begin(), storey_preinfo.end()); // 按楼层高度进行排序
+
+	IfcEntityList::ptr structure_list = ifc_file->instances_by_type("IfcRelContainedInSpatialStructure");
+
+	for (IfcEntityList::it it = structure_list.get()->begin(); it != structure_list.get()->end(); it++)
+	{
+		IfcUtil::IfcBaseClass* entity = *it;
+		std::string entities = entity->data().getArgument(4)->toString();
+		entities = entities.substr(2, entities.size() - 3); // 去掉头部的 (# 和尾部的 )
+		std::vector<std::string> entities_id_str;
+
+		boost::split(entities_id_str, entities, boost::is_any_of(",#"), boost::token_compress_on);
+		std::set<int> entities_in_one_storey;
+		for (size_t i = 0; i < entities_id_str.size(); i++)
+		{
+			entities_in_one_storey.insert(std::stoi(entities_id_str[i]));
+		}
+		std::string storey = entity->data().getArgument(5)->toString().substr(1);
+		int storey_id = std::stoi(storey);
+		for (size_t i = 0; i < storey_preinfo.size(); i++)
+		{
+			std::pair<double, int> info_storey = storey_preinfo[i];
+			if (info_storey.second == storey_id) {
+				storey_fixed[i] = entities_in_one_storey;
+			}
+		}
 	}
 }

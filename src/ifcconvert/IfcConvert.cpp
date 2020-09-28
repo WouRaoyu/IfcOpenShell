@@ -839,6 +839,7 @@ int main(int argc, char** argv) {
 	do {
         IfcGeom::Element<real_t> *geom_object = context_iterator.get();
 
+
 		if (is_tesselated)
 		{
 			serializer->write(static_cast<const IfcGeom::TriangulationElement<real_t>*>(geom_object));

@@ -38,6 +38,7 @@ private:
 	std::ofstream offx_stream; // semantic info
 	std::ofstream offc_stream; // connection info
 	semanticSetting setting_fixed;
+	std::map<int, std::set<int>> storey_fixed;
 	IfcParse::IfcFile* ifc_file;
 	unsigned int offLine_count;
 	unsigned int vcount_total;
@@ -56,9 +57,13 @@ public:
 	void write(const IfcGeom::TriangulationElement<real_t>* o);
 	void write(const IfcGeom::BRepElement<real_t>* /*o*/) {}
 	void finalize();
+	void generateStorey();
 	bool isTesselated() const { return true; }
 	void setUnitNameAndMagnitude(const std::string& /*name*/, float /*magnitude*/) {}
-	void setFile(IfcParse::IfcFile* file) { ifc_file = file; }
+	void setFile(IfcParse::IfcFile* file) { 
+		ifc_file = file;
+		generateStorey(); // 设置file同时生成storey信息
+	}
 };
 
 #endif
