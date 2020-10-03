@@ -43,8 +43,9 @@ void OffSerializer::initSemanticSetting()
 	setting_fixed["IfcWall"] = "Wall";
 	setting_fixed["IfcWallStandardCase"] = "Wall";
 	setting_fixed["IfcCurtainWall"] = "Wall";
-	setting_fixed["IfcPlate"] = "Wall";
-	setting_fixed["IfcMember"] = "Wall";
+	
+	// setting_fixed["IfcPlate"] = "Wall";
+	// setting_fixed["IfcMember"] = "Wall";
 
 	setting_fixed["IfcFooting"] = "Ground";
 
@@ -98,6 +99,7 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 		int count = o->product()->data().getArgumentCount();
 		std::string type = o->product()->data().getArgument(count - 1)->toString();
 		sem_type = type.substr(1, type.size() - 2);
+		if (sem_type != "FLOOR" || sem_type != "ROOF") return;
 	}
 
 	const IfcGeom::Representation::Triangulation<real_t>& mesh = o->geometry();
@@ -200,7 +202,7 @@ void OffSerializer::generateStorey()
 		std::set<int> entities_in_one_storey;
 		for (size_t i = 0; i < entities_id_str.size(); i++)
 		{
-			entities_in_one_storey.insert(std::stoi(entities_id_str[i]));
+			entities_in_one_storey.emplace(std::stoi(entities_id_str[i]));
 		}
 		std::string storey = entity->data().getArgument(5)->toString().substr(1);
 		int storey_id = std::stoi(storey);
@@ -211,5 +213,40 @@ void OffSerializer::generateStorey()
 				storey_fixed[i] = entities_in_one_storey;
 			}
 		}
+	}
+}
+
+void OffSerializer::generateAggregate()
+{
+	IfcEntityList::ptr aggregate_list = ifc_file->instances_by_type("IfcRelAggregates");
+
+	// IfcCurtainWall IfcRoof
+	IfcEntityList::ptr roof_list = ifc_file->instances_by_type("IfcRoof");
+	IfcEntityList::ptr curtain_list = ifc_file->instances_by_type("IfcCurtainWall");
+	
+
+	std::set<int> aggregate_info;
+	for (IfcEntityList::it it = aggregate_list.get()->begin(); it != aggregate_list.get()->end(); it++)
+	{
+		IfcUtil::IfcBaseClass* entity = *it;
+
+		int parent = std::stoi(entity->data().getArgument(4)->toString().substr(1));
+
+		std::string type = ifc_file->instance_by_id(parent)->declaration().name();
+
+		if (type != "IfcCurtainWall" && type != "IfcRoof") return;
+
+		std::string entities = entity->data().getArgument(5)->toString();
+		
+		entities = entities.substr(2, entities.size() - 3); // 去掉头部的 (# 和尾部的 )
+		std::vector<std::string> entities_id_str;
+
+		boost::split(entities_id_str, entities, boost::is_any_of(",#"), boost::token_compress_on);
+		std::set<int> entities_aggregate;
+		for (size_t i = 0; i < entities_id_str.size(); i++)
+		{
+			entities_aggregate.emplace(std::stoi(entities_id_str[i]));
+		}
+		aggregate_fixed[parent] = entities_aggregate;
 	}
 }
