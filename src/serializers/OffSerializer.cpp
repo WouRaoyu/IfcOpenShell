@@ -90,7 +90,12 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 		IfcUtil::IfcBaseClass* parent = ifc_file->instance_by_id(o->parent_id());
 		std::string type = parent->declaration().name();
 		sem_type = semanticName(type);
-		// if (sem_type.empty()) sem_type = "Anything";
+		for (std::pair<int, std::set<int>> agg : aggregate_fixed) {
+			if (agg.second.find(o->parent_id()) != agg.second.end()) {
+				if (agg.first == 0) sem_type = "IfcCurtainWall";
+				else if (agg.first == 1) sem_type = "IfcCurtainWall";
+			}
+		}
 		if (sem_type.empty()) return;
 	}
 
@@ -220,33 +225,27 @@ void OffSerializer::generateAggregate()
 {
 	IfcEntityList::ptr aggregate_list = ifc_file->instances_by_type("IfcRelAggregates");
 
-	// IfcCurtainWall IfcRoof
-	IfcEntityList::ptr roof_list = ifc_file->instances_by_type("IfcRoof");
-	IfcEntityList::ptr curtain_list = ifc_file->instances_by_type("IfcCurtainWall");
-	
-
-	std::set<int> aggregate_info;
 	for (IfcEntityList::it it = aggregate_list.get()->begin(); it != aggregate_list.get()->end(); it++)
 	{
 		IfcUtil::IfcBaseClass* entity = *it;
 
 		int parent = std::stoi(entity->data().getArgument(4)->toString().substr(1));
 
-		std::string type = ifc_file->instance_by_id(parent)->declaration().name();
-
-		if (type != "IfcCurtainWall" && type != "IfcRoof") return;
-
+		const IfcParse::declaration decl = ifc_file->instance_by_id(parent)->declaration();
+		if (!decl.is("IfcCurtainWall") && !decl.is("IfcRoof")) return;
 		std::string entities = entity->data().getArgument(5)->toString();
-		
 		entities = entities.substr(2, entities.size() - 3); // 去掉头部的 (# 和尾部的 )
 		std::vector<std::string> entities_id_str;
-
 		boost::split(entities_id_str, entities, boost::is_any_of(",#"), boost::token_compress_on);
-		std::set<int> entities_aggregate;
+
+		int index_type; // 0代表wall 1代表roof
+		if (decl.is("IfcCurtainWall")) index_type = 0;
+		else if (decl.is("IfcRoof")) index_type = 1;
+		
+
 		for (size_t i = 0; i < entities_id_str.size(); i++)
 		{
-			entities_aggregate.emplace(std::stoi(entities_id_str[i]));
+			aggregate_fixed[index_type].emplace(std::stoi(entities_id_str[i]));
 		}
-		aggregate_fixed[parent] = entities_aggregate;
 	}
 }
