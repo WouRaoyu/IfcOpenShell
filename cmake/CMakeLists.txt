@@ -150,6 +150,7 @@ ELSE()
     ADD_DEFINITIONS(-DBOOST_ALL_NO_LIB)
     IF(WIN32)
         # Necessary for boost version >= 1.67
+        SET(Boost_USE_STATIC_LIBS OFF) # CONDA
         SET(BCRYPT_LIBRARIES "bcrypt.lib")
     ENDIF()
 ENDIF()

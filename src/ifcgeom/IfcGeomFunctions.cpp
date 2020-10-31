@@ -1895,7 +1895,9 @@ IfcGeom::BRepElement<P, PP>* IfcGeom::Kernel::create_brep_for_representation_and
 	const std::string product_type = product->declaration().name();
 	ElementSettings element_settings(settings, getValue(GV_LENGTH_UNIT), product_type);
 
-    if (!settings.get(IfcGeom::IteratorSettings::DISABLE_OPENING_SUBTRACTIONS) && openings && openings->size()) {
+	const bool is_slab = product_type == "IfcSlab";
+
+    if ((!settings.get(IfcGeom::IteratorSettings::DISABLE_OPENING_SUBTRACTIONS) || is_slab ) && openings && openings->size()) {
 		representation_id_builder << "-openings";
 		for (IfcSchema::IfcRelVoidsElement::list::it it = openings->begin(); it != openings->end(); ++it) {
 			representation_id_builder << "-" << (*it)->data().id();
