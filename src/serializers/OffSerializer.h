@@ -1,21 +1,12 @@
-/********************************************************************************
- *                                                                              *
- * This file is part of IfcOpenShell.                                           *
- *                                                                              *
- * IfcOpenShell is free software: you can redistribute it and/or modify         *
- * it under the terms of the Lesser GNU General Public License as published by  *
- * the Free Software Foundation, either version 3.0 of the License, or          *
- * (at your option) any later version.                                          *
- *                                                                              *
- * IfcOpenShell is distributed in the hope that it will be useful,              *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the                 *
- * Lesser GNU General Public License for more details.                          *
- *                                                                              *
- * You should have received a copy of the Lesser GNU General Public License     *
- * along with this program. If not, see <http://www.gnu.org/licenses/>.         *
- *                                                                              *
- ********************************************************************************/
+/*
+ * File: OffSerializer.h
+ * Project: SpaceExtraction
+ * File Created: Friday, 30th October 2020 4:21:18 pm
+ * Author: WouRaoyu
+ * Last Modified: Friday, 30th October 2020 7:30:00 pm
+ * Modified By: WouRaoyu
+ * Copyright 2020 vge lab
+ */
 
 #ifndef OffSERIALIZER_H
 #define OffSERIALIZER_H
@@ -64,8 +55,8 @@ public:
 	void setUnitNameAndMagnitude(const std::string& /*name*/, float /*magnitude*/) {}
 	void setFile(IfcParse::IfcFile* file) { 
 		ifc_file = file;
-		generateStorey(); // 设置file同时生成storey信息
-		generateAggregate(); // 设置file同时生成aggregate信息
+		generateStorey();
+		generateAggregate();
 	}
 };
 
