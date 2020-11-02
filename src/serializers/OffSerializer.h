@@ -30,7 +30,7 @@ private:
 	std::ofstream offc_stream; // connection info
 	semanticSetting setting_fixed;
 	std::map<int, std::set<int>> storey_fixed;
-	std::map<int, std::set<int>> aggregate_fixed;
+	std::map<int*, std::set<int>> aggregate_fixed;
 	IfcParse::IfcFile* ifc_file;
 	unsigned int offLine_count;
 	unsigned int vcount_total;

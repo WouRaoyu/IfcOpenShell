@@ -14,21 +14,18 @@
 
 
 OffSerializer::OffSerializer(const std::string& out_filename, const SerializerSettings& settings)
-	: off_stream((out_filename).c_str())
+	: GeometrySerializer(settings)
+	, off_stream((out_filename).c_str())
 	, offx_stream((out_filename.substr(0, out_filename.length()-4) + "x").c_str())
 	, offc_stream((out_filename.substr(0, out_filename.length()-4) + "c").c_str())
 	, offLine_count(0)
 	, vcount_total(1)
-	, settings(settings)
 	, precision(settings.precision){
 	initSemanticSetting();
 }
 
 void OffSerializer::initSemanticSetting()
 {
-	// setting_fixed["IfcWindow"] = "Window";
-	// setting_fixed["IfcDoor"] = "Door";
-
 	setting_fixed["IfcSite"] = "Site";
 	setting_fixed["IfcRoof"] = "Roof";
 	
@@ -38,6 +35,13 @@ void OffSerializer::initSemanticSetting()
 
 	setting_fixed["IfcFooting"] = "Ground";
 
+	setting_fixed["IfcColumn"] = "Column";
+
+	setting_fixed["IfcSlab"] = "Floor";
+
+	// setting_fixed["IfcWindow"] = "Window";
+	// setting_fixed["IfcDoor"] = "Door";
+
 	//setting_fixed["IfcSpace"] = "Closure";
 	// setting_fixed["IfcBuildingElementProxy"] = "Install";
 	// setting_fixed["IfcRailing"] = "Install";
@@ -45,11 +49,6 @@ void OffSerializer::initSemanticSetting()
 	// setting_fixed["IfcRampFlight"] = "Install";
 	// setting_fixed["IfcStair"] = "Install";
 	// setting_fixed["IfcStairFlight"] = "Install";
-	// setting_fixed["IfcColumn"] = "Install";
-
-	setting_fixed["IfcSlab"] = "Floor";
-	// IfcSlab -> unsure maybe floor roof site groud...
-	// IfcPlate -> unsure maybe floor roof site groud...
 }
 
 
@@ -73,6 +72,8 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 	std::string sem_type = semanticName(o->type());
 	int element_id = o->id(); // Update this id for parent or aggregate situation
 
+	// IfcSlab -> unsure maybe floor roof site groud...
+	// IfcPlate -> unsure maybe floor roof site groud...
 	if (o->type() == "IfcSlab")
 	{
 		int count = o->product()->data().getArgumentCount();
@@ -114,9 +115,9 @@ void OffSerializer::write(const IfcGeom::TriangulationElement<real_t>* o)
 
 	const int vcount = (int)mesh.verts().size() / 3;
 	for (std::vector<real_t>::const_iterator it = mesh.verts().begin(); it != mesh.verts().end();) {
-		const real_t x = *(it++) + (real_t)settings.offset[0];
-		const real_t y = *(it++) + (real_t)settings.offset[1];
-		const real_t z = *(it++) + (real_t)settings.offset[2];
+		const real_t x = *(it++) + (real_t)settings_.offset[0];
+		const real_t y = *(it++) + (real_t)settings_.offset[1];
+		const real_t z = *(it++) + (real_t)settings_.offset[2];
 		
 		std::vector<double> vVector;	//put coords in vector
 		vVector.push_back(x); vVector.push_back(y); vVector.push_back(z);
